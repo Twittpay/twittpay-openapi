@@ -1,0 +1,118 @@
+openapi: 3.0.3
+info:
+  title: TwittPay API
+  version: 2.6.0
+  description: |
+    Take bKash, Nagad, Rocket and Upay payments. Create a payment, send the customer to the
+    returned link, then verify the payment on your server before delivering anything.
+
+    Authenticate with your Brand Key in the `API-KEY` header. Keep it on your server.
+servers:
+  - url: https://checkout.twittpay.com
+security:
+  - BrandKey: []
+paths:
+  /api/payment/create:
+    post:
+      summary: Create a payment
+      operationId: createPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '200':
+          description: The payment was created. Send the customer to payment_url.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePaymentResponse'
+  /api/payment/verify:
+    post:
+      summary: Verify a payment
+      description: Ask TwittPay for the real state of a payment. Always do this before marking an order paid.
+      operationId: verifyPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyPaymentRequest'
+      responses:
+        '200':
+          description: The state of the payment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyPaymentResponse'
+components:
+  securitySchemes:
+    BrandKey:
+      type: apiKey
+      in: header
+      name: API-KEY
+      description: Your Brand Key from the TwittPay dashboard, under Brands.
+  schemas:
+    CreatePaymentRequest:
+      type: object
+      required: [amount, success_url, cancel_url]
+      properties:
+        cus_name:
+          type: string
+          example: John Doe
+        cus_email:
+          type: string
+          example: john@example.com
+        amount:
+          type: string
+          description: Amount in BDT with two decimals.
+          example: '500.00'
+        success_url:
+          type: string
+          format: uri
+          description: Where the customer returns after paying. TwittPay adds transactionId.
+        cancel_url:
+          type: string
+          format: uri
+        webhook_url:
+          type: string
+          format: uri
+          description: TwittPay tells this address when a payment is completed. Verify it again before trusting it.
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Your own values, such as the order id. They come back when you verify.
+    CreatePaymentResponse:
+      type: object
+      properties:
+        payment_url:
+          type: string
+          format: uri
+        message:
+          type: string
+      additionalProperties: true
+    VerifyPaymentRequest:
+      type: object
+      required: [transaction_id]
+      properties:
+        transaction_id:
+          type: string
+    VerifyPaymentResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: COMPLETED means paid. Anything else is not paid.
+          example: COMPLETED
+        amount:
+          type: string
+          example: '500.00'
+        metadata:
+          type: string
+          description: The metadata you sent, as a JSON string. Decode it before reading it.
+        message:
+          type: string
+      additionalProperties: true
